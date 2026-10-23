@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;  -- `courier_id WITH =` inside a GiST exclusion constraint
 CREATE SCHEMA IF NOT EXISTS courier_shifts;
 
 CREATE TABLE courier_shifts.couriers (
@@ -12,7 +13,11 @@ CREATE TABLE courier_shifts.shifts (
     zone         TEXT        NOT NULL,
     -- half-open [start, end): a shift ending at 12:00 and one starting at 12:00 do not overlap
     period       TSTZRANGE   NOT NULL CHECK (NOT isempty(period) AND lower_inc(period) AND NOT upper_inc(period)),
-    cancelled_at TIMESTAMPTZ
+    cancelled_at TIMESTAMPTZ,
+    -- The invariant lives here, not in the handler: a check-then-insert in
+    -- application code lets concurrent requests both pass (tests/test_race.py).
+    CONSTRAINT shifts_no_overlap EXCLUDE USING gist (courier_id WITH =, period WITH &&)
+        WHERE (cancelled_at IS NULL)
 );
 CREATE INDEX shifts_courier_start_idx ON courier_shifts.shifts (courier_id, lower(period));
 

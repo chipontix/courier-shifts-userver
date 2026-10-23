@@ -156,20 +156,6 @@ json::Value CreateShift::HandleRequestJsonThrow(
         ThrowBadRequest(fmt::format("shift is longer than {}h", max_duration.count()));
     }
 
-    const bool overlaps =
-        pg_->Execute(
-               kMaster,
-               "SELECT EXISTS (SELECT 1 FROM courier_shifts.shifts "
-               "WHERE courier_id = $1 AND cancelled_at IS NULL AND period && tstzrange($2, $3, '[)'))",
-               courier_id,
-               pg::TimePointTz{starts_at},
-               pg::TimePointTz{ends_at}
-        )
-            .AsSingleRow<bool>();
-    if (overlaps) {
-        throw ConflictError(ExternalBody{"shift overlaps another shift of this courier"});
-    }
-
     std::int64_t id = 0;
     try {
         id = pg_->Execute(
@@ -182,6 +168,8 @@ json::Value CreateShift::HandleRequestJsonThrow(
                     pg::TimePointTz{ends_at}
         )
                  .AsSingleRow<std::int64_t>();
+    } catch (const pg::ExclusionViolation&) {
+        throw ConflictError(ExternalBody{"shift overlaps another shift of this courier"});
     } catch (const pg::ForeignKeyViolation&) {
         throw ResourceNotFound(ExternalBody{fmt::format("courier {} not found", courier_id)});
     }
@@ -269,9 +257,11 @@ json::Value CreateAssignment::HandleRequestJsonThrow(
     try {
         inserted = pg_->Execute(
                           kMaster,
+                          // FOR SHARE: a concurrent cancel waits for this insert (or wins and the
+                          // re-checked row no longer matches), so no delivery lands on a cancelled shift.
                           "WITH s AS ("
                           "  SELECT id, courier_id FROM courier_shifts.shifts "
-                          "  WHERE id = $1 AND cancelled_at IS NULL AND period @> $4::timestamptz"
+                          "  WHERE id = $1 AND cancelled_at IS NULL AND period @> $4::timestamptz FOR SHARE"
                           "), ins AS ("
                           "  INSERT INTO courier_shifts.assignments (shift_id, order_id, distance_m, delivered_at) "
                           "  SELECT id, $2, $3, $4 FROM s RETURNING id"

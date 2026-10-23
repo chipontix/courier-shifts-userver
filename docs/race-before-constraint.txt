@@ -1,0 +1,7 @@
+tests/test_race.py against commit 844fa0f (overlap checked in the handler with
+SELECT EXISTS ... then INSERT, no database constraint):
+
+E           AssertionError: round 1: [201, 201, 201, 201, 409, 409, 409, 409, 409, 409, 409, 409, 409, 409, 409, 409]
+
+16 concurrent overlapping POST /v1/shifts for one courier, 4 of them were
+accepted. Both checks see "no overlap" before any of the inserts commits.
