@@ -1,0 +1,10 @@
+# Production-like settings used by docker compose and the load test.
+worker-threads: 2
+worker-fs-threads: 1
+logger-level: warning
+is-testing: false
+server-port: 8080
+monitor-port: 8081
+secdist-path: /etc/courier_shifts/secdist.json
+pg-connection: postgresql://courier:courier@postgres:5432/courier_shifts_db
+pg-pool-size: 32

@@ -1,0 +1,36 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {"major": 3, "minor": 21, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "common",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_SCAN_FOR_MODULES": "OFF",
+        "CMAKE_C_COMPILER_LAUNCHER": "ccache",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "ccache",
+        "USERVER_USE_LD": "lld"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "common",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo"}
+    },
+    {
+      "name": "asan",
+      "inherits": "common",
+      "binaryDir": "${sourceDir}/build/asan",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "USERVER_SANITIZE": "addr;ub"}
+    },
+    {
+      "name": "tsan",
+      "inherits": "common",
+      "binaryDir": "${sourceDir}/build/tsan",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "USERVER_SANITIZE": "thread"}
+    }
+  ]
+}

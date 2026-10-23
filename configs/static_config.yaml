@@ -1,0 +1,135 @@
+components_manager:
+    task_processors:
+        main-task-processor:
+            worker_threads: $worker-threads
+        fs-task-processor:
+            worker_threads: $worker-fs-threads
+        monitor-task-processor:
+            worker_threads: 1
+            thread_name: mon-worker
+    default_task_processor: main-task-processor
+
+    components:
+        server:
+            listener:
+                port: $server-port
+                task_processor: main-task-processor
+            listener-monitor:
+                port: $monitor-port
+                task_processor: monitor-task-processor
+
+        logging:
+            fs-task-processor: fs-task-processor
+            loggers:
+                default:
+                    file_path: '@stderr'
+                    level: $logger-level
+                    overflow_behavior: discard
+
+        # Values come from `defaults` in production-like runs (no configs service
+        # here); testsuite enables updates and serves per-test overrides.
+        dynamic-config:
+            updates-enabled: $is-testing
+            fs-cache-path: ''
+            defaults:
+                # CPU-overload protection: returns 429 instead of growing queues.
+                USERVER_RPS_CCONTROL_ENABLED: true
+                POSTGRES_DEFAULT_COMMAND_CONTROL:
+                    network_timeout_ms: 750
+                    statement_timeout_ms: 500
+
+        dynamic-config-client:
+            load-enabled: $is-testing
+            config-url: http://localhost:8083/
+            service-name: courier-shifts
+            http-timeout: 5s
+            http-retries: 2
+        dynamic-config-client-updater:
+            load-enabled: $is-testing
+            config-settings: false
+            first-update-fail-ok: true
+            full-update-interval: 1m
+            update-interval: 5s
+
+        congestion-control:
+            fake-mode: $is-testing
+            only-rtc: false  # CPU limit comes from the CPU_LIMIT env var
+            min-cpu: 2
+
+        testsuite-support: {}
+
+        http-client:
+        dynamic-config-http-client:
+            load-enabled: $is-testing
+        http-client-core:
+            load-enabled: $is-testing
+            fs-task-processor: fs-task-processor
+
+        dns-client:
+            fs-task-processor: fs-task-processor
+
+        tests-control:
+            load-enabled: $is-testing
+            path: /tests/{action}
+            method: POST
+            task_processor: main-task-processor
+
+        default-secdist-provider:
+            config: $secdist-path
+            missing-ok: true
+            environment-secrets-key: SECDIST_CONFIG
+
+        courier-db:
+            dbconnection: $pg-connection
+            dbconnection#env: DB_CONNECTION
+            blocking_task_processor: fs-task-processor
+            dns_resolver: async
+            sync-start: true
+            max_pool_size: $pg-pool-size
+
+        courier-cache:
+            groups:
+              - config_name: courier-cache
+                db: courier-cache
+                sharding_strategy: RedisStandalone
+            subscribe_groups: []
+            thread_pools:
+                redis_thread_pool_size: 2
+                sentinel_thread_pool_size: 1
+
+        handler-ping:
+            path: /ping
+            method: GET
+            task_processor: main-task-processor
+            throttling_enabled: false
+            url_trailing_slash: strict-match
+
+        handler-server-monitor:
+            path: /service/monitor
+            method: GET
+            task_processor: monitor-task-processor
+
+        handler-create-courier:
+            path: /v1/couriers
+            method: POST
+            task_processor: main-task-processor
+        handler-create-shift:
+            path: /v1/shifts
+            method: POST
+            task_processor: main-task-processor
+        handler-cancel-shift:
+            path: /v1/shifts/{shift_id}/cancel
+            method: POST
+            task_processor: main-task-processor
+        handler-list-shifts:
+            path: /v1/couriers/{courier_id}/shifts
+            method: GET
+            task_processor: main-task-processor
+        handler-create-assignment:
+            path: /v1/shifts/{shift_id}/assignments
+            method: POST
+            task_processor: main-task-processor
+        handler-get-earnings:
+            path: /v1/couriers/{courier_id}/earnings
+            method: GET
+            task_processor: main-task-processor
