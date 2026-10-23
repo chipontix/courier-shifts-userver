@@ -8,3 +8,4 @@ monitor-port: 8081
 secdist-path: /etc/courier_shifts/secdist.json
 pg-connection: postgresql://courier:courier@postgres:5432/courier_shifts_db
 pg-pool-size: 32
+stack-usage-monitor: true

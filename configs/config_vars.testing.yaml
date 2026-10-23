@@ -7,3 +7,4 @@ monitor-port: 8081
 secdist-path: /nonexistent
 pg-connection: postgresql://testsuite@localhost:15433/courier_shifts_db
 pg-pool-size: 10
+stack-usage-monitor: false

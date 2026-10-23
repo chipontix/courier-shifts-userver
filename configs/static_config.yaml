@@ -1,4 +1,8 @@
 components_manager:
+    coro_pool:
+        # The monitor needs userfaultfd, which CI runners (GitHub Actions) do
+        # not allow unprivileged; Debug builds turn that into an assertion.
+        stack_usage_monitor_enabled: $stack-usage-monitor
     task_processors:
         main-task-processor:
             worker_threads: $worker-threads
