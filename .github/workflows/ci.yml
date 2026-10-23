@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        # release: RelWithDebInfo; asan: Debug + ASan + UBSan; tsan: RelWithDebInfo + TSan.
+        # Each preset builds userver from source with the same flags.
+        preset: [release, asan, tsan]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.preset }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.preset }}-
+
+      - name: Build dev image
+        run: make image
+
+      - name: Build and run unit + testsuite tests
+        run: |
+          mkdir -p .ccache && chmod 777 .ccache
+          make test PRESET=${{ matrix.preset }} CCACHE_VOLUME=$PWD/.ccache

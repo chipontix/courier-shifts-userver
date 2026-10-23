@@ -21,4 +21,8 @@ RUN ln -sf "$(ls -d /usr/lib/linux-tools/*/ | head -1)perf" /usr/local/bin/perf
 RUN apt-get update && apt-get install -y --no-install-recommends locales \
  && locale-gen en_US.UTF-8 && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Builds and tests run as the unprivileged `ubuntu` user (initdb refuses root).
+# New named volumes mounted here inherit this ownership.
+RUN mkdir -p /src/build /ccache /cpm && chown ubuntu:ubuntu /src/build /ccache /cpm
+
 ENV CC=clang-18 CXX=clang++-18 CCACHE_DIR=/ccache

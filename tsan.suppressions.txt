@@ -1,0 +1,23 @@
+# ThreadSanitizer suppressions, used via TSAN_OPTIONS by `make test PRESET=tsan`.
+#
+# The first block is userver's own cmake/tsan.suppressions.txt (v3.2), which
+# its CI uses for TSan runs.
+race:libev/ev.c
+race:moodycamel/concurrentqueue.h
+race:boost/context/fiber_ucontext.hpp
+race:core/src/engine/coro/stack_usage_monitor.cpp
+race:core/src/engine/impl/detached_tasks_sync_block.cpp
+
+# Added here: every remaining report (10 per service process on
+# aarch64/clang 18) comes from userver's shutdown path, where the main thread
+# waits for the last coroutine in components::impl::Manager::~Manager via
+# TaskBase::BlockingWait. None of them involves this service's code. Matching
+# on ~Manager keeps any race during normal operation visible.
+race:components::impl::Manager::~Manager
+
+# Added here: rare (~1 in 15 testsuite runs) report inside userver's Redis
+# driver in RedisStandalone mode: an RCU snapshot of ClusterTopology is
+# destroyed on one ev thread while the state-change callback set up in
+# SentinelImpl::Init() reads it on another. Looks like an upstream issue; it
+# does not touch this service's code.
+race:storages::redis::impl::ClusterTopology::~ClusterTopology
