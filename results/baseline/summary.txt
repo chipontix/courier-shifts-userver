@@ -1,0 +1,4 @@
+docker host: Ubuntu 24.04.4 LTS, aarch64, 8 CPUs, kernel 6.8.0-117-generic
+service CPU: 1.325 cores on average over 60s
+service CPU: 1.315 cores on average over 60s
+service CPU: 1.325 cores on average over 60s

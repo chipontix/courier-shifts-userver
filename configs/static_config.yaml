@@ -33,7 +33,8 @@ components_manager:
             fs-cache-path: ''
             defaults:
                 # CPU-overload protection: returns 429 instead of growing queues.
-                USERVER_RPS_CCONTROL_ENABLED: true
+                USERVER_RPS_CCONTROL_ENABLED#env: CC_ENABLED
+                USERVER_RPS_CCONTROL_ENABLED#fallback: true
                 POSTGRES_DEFAULT_COMMAND_CONTROL:
                     network_timeout_ms: 750
                     statement_timeout_ms: 500
@@ -58,7 +59,9 @@ components_manager:
 
         testsuite-support: {}
 
+        # HTTP clients serve testsuite and the dynamic config client only.
         http-client:
+            load-enabled: $is-testing
         dynamic-config-http-client:
             load-enabled: $is-testing
         http-client-core:

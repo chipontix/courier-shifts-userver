@@ -28,3 +28,8 @@ test: build
 
 shell:
 	$(DOCKER_RUN) bash
+
+# Load test + profile on the pinned-CPU stand, see loadtest/run.sh.
+.PHONY: bench
+bench:
+	LABEL=$(LABEL) ./loadtest/suite.sh

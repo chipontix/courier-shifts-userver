@@ -1,0 +1,13 @@
+[
+  {
+    "offered_rps": 12000,
+    "answered_rps": 12148,
+    "p50_ms": 0.48,
+    "p99_ms": 10.65,
+    "error_pct": 0.01,
+    "r429_pct": 0.0,
+    "r5xx_pct": 0.01,
+    "net_pct": 0.0,
+    "other": 0
+  }
+]

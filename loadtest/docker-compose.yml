@@ -1,0 +1,79 @@
+# Load-test stand. CPUs are pinned so the service gets exactly 2 vCPUs and
+# does not share them with PostgreSQL, Redis or the load generator.
+name: courier-bench
+
+services:
+  postgres:
+    image: postgres:16
+    cpuset: "2-4"
+    environment:
+      POSTGRES_USER: courier
+      POSTGRES_PASSWORD: courier
+      POSTGRES_DB: courier_shifts_db
+    command: >
+      postgres -c shared_buffers=1GB -c max_connections=200
+               -c synchronous_commit=off -c checkpoint_timeout=30min
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ../postgresql/schemas/db.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: pg_isready -U courier -d courier_shifts_db
+      interval: 1s
+      retries: 60
+
+  redis:
+    image: redis:7
+    cpuset: "5"
+    command: redis-server --save "" --appendonly no
+
+  service:
+    image: courier-dev
+    cpuset: "0,1"
+    user: ubuntu
+    ulimits:
+      nofile: 65536  # one socket per load-generator connection
+    environment:
+      CC_ENABLED: ${CC_ENABLED:-true}  # dynamic config USERVER_RPS_CCONTROL_ENABLED
+      CPU_LIMIT: "2c"  # cores available to congestion control (userver wants the "c" suffix)
+      SECDIST_CONFIG: >
+        {"redis_settings": {"courier-cache": {"password": "",
+         "sentinels": [{"host": "redis", "port": 6379}], "shards": [{"name": "main"}]}}}
+    volumes:
+      - courier-build:/src/build:ro
+      - ../configs:/etc/courier_shifts:ro
+    command: >
+      /src/build/${PRESET:-release}/courier_shifts
+      --config /etc/courier_shifts/static_config.yaml
+      --config_vars /etc/courier_shifts/config_vars.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: curl -sf http://localhost:8080/ping
+      interval: 1s
+      retries: 60
+
+  pandora:
+    image: courier-pandora
+    build:
+      dockerfile_inline: |
+        FROM golang:1.24-bookworm AS build
+        # go install refuses modules with replace directives, so build the tag from source.
+        RUN git clone --depth 1 --branch v0.6.2 https://github.com/yandex/pandora /pandora \
+         && cd /pandora && CGO_ENABLED=0 go build -o /go/bin/pandora .
+        FROM debian:bookworm-slim
+        COPY --from=build /go/bin/pandora /usr/local/bin/pandora
+    cpuset: "6,7"
+    ulimits:
+      nofile: 65536
+    profiles: [tools]
+    working_dir: /work
+    volumes:
+      - ./:/work
+
+volumes:
+  courier-build:
+    external: true

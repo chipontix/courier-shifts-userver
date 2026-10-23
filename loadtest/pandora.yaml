@@ -1,0 +1,25 @@
+# Open-model step load. run.sh substitutes the ${env:...} placeholders.
+pools:
+  - id: courier
+    gun:
+      type: http
+      target: service:8080
+      response-header-timeout: 1s  # slower answers count as timeouts
+    ammo:
+      type: http/json
+      file: /work/out/ammo.jsonl
+    result:
+      type: phout
+      destination: /work/out/${env:RUN_NAME}.phout
+    discard_overflow: true
+    rps:
+      type: step
+      from: ${env:RPS_FROM}
+      to: ${env:RPS_TO}
+      step: ${env:RPS_STEP}
+      duration: ${env:STEP_DURATION}
+    startup:
+      type: once
+      times: ${env:INSTANCES}
+log:
+  level: error
