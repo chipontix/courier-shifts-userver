@@ -156,12 +156,16 @@ json::Value CreateShift::HandleRequestJsonThrow(
         ThrowBadRequest(fmt::format("shift is longer than {}h", max_duration.count()));
     }
 
+    // The exclusion constraint is the invariant. Concurrent inserts for one courier can still deadlock while
+    // checking it (each waits for the other's uncommitted row, PostgreSQL aborts one with 40P01), so writers of
+    // the same courier are queued on a transaction-scoped advisory lock taken by the same statement.
     std::int64_t id = 0;
     try {
         id = pg_->Execute(
                     kMaster,
+                    "WITH lock AS (SELECT pg_advisory_xact_lock($1)) "
                     "INSERT INTO courier_shifts.shifts (courier_id, zone, period) "
-                    "VALUES ($1, $2, tstzrange($3, $4, '[)')) RETURNING id",
+                    "SELECT $1, $2, tstzrange($3, $4, '[)') FROM lock RETURNING id",
                     courier_id,
                     zone,
                     pg::TimePointTz{starts_at},
