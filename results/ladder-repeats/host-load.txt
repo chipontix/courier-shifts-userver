@@ -1,0 +1,7 @@
+round 1 baseline load: 4.20 5.53 5.97
+round 1 day-cache load: 5.63 5.31 5.71
+round 2 baseline load: 5.38 5.21 5.53
+round 2 day-cache load: 5.70 5.28 5.43
+high baseline load: 4.01 5.19 5.36
+high day-cache load: 5.50 5.36 5.39
+high-cc day-cache load: 6.15 5.91 5.63
