@@ -1,0 +1,4 @@
+# The dev image only needs the apt package list; keep build/, .git and
+# loadtest/out (GBs of phout logs) out of the build context.
+*
+!docker/apt-deps.txt
