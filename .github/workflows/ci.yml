@@ -31,5 +31,6 @@ jobs:
 
       - name: Build and run unit + testsuite tests
         run: |
-          mkdir -p .ccache && chmod 777 .ccache
+          # The container builds as uid 1000; the restored cache belongs to the runner user.
+          mkdir -p .ccache && chmod -R a+rwX .ccache
           make test PRESET=${{ matrix.preset }} CCACHE_VOLUME=$PWD/.ccache
