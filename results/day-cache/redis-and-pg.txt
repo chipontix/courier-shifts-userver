@@ -9,5 +9,6 @@ Redis commands (reads)   1,148,280                     605,206   (-47 %)
 PG earnings queries      358,279                       173,484   (-52 %)
 invalidations (DEL)      143,364                       143,470
 
-From the perf profiles (results/*/flamegraph.svg, 30 s at 12k RPS):
-GetEarnings handler      19.2 % of 1.32 cores = 0.25   13.3 % of 1.16 cores = 0.15
+From the perf profiles (results/*/flamegraph.svg, 30 s at 12k RPS; CPU of
+those runs from perf.cpu, perf overhead included):
+GetEarnings handler      19.2 % of 1.44 cores = 0.28   13.3 % of 1.18 cores = 0.16
