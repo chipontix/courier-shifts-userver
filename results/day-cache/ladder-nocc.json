@@ -1,0 +1,90 @@
+[
+  {
+    "offered_rps": 4000,
+    "answered_rps": 2923,
+    "p50_ms": 0.33,
+    "p99_ms": 55.6,
+    "error_pct": 27.95,
+    "r429_pct": 0.0,
+    "r5xx_pct": 8.23,
+    "net_pct": 19.72,
+    "other": 0
+  },
+  {
+    "offered_rps": 8000,
+    "answered_rps": 6634,
+    "p50_ms": 0.28,
+    "p99_ms": 64.13,
+    "error_pct": 18.25,
+    "r429_pct": 0.0,
+    "r5xx_pct": 13.62,
+    "net_pct": 4.63,
+    "other": 0
+  },
+  {
+    "offered_rps": 12000,
+    "answered_rps": 10324,
+    "p50_ms": 0.37,
+    "p99_ms": 59.93,
+    "error_pct": 15.16,
+    "r429_pct": 0.0,
+    "r5xx_pct": 7.44,
+    "net_pct": 7.72,
+    "other": 0
+  },
+  {
+    "offered_rps": 16000,
+    "answered_rps": 16134,
+    "p50_ms": 0.78,
+    "p99_ms": 67.42,
+    "error_pct": 6.4,
+    "r429_pct": 0.0,
+    "r5xx_pct": 6.4,
+    "net_pct": 0.0,
+    "other": 0
+  },
+  {
+    "offered_rps": 20000,
+    "answered_rps": 20153,
+    "p50_ms": 0.97,
+    "p99_ms": 31.03,
+    "error_pct": 0.64,
+    "r429_pct": 0.0,
+    "r5xx_pct": 0.64,
+    "net_pct": 0.0,
+    "other": 0
+  },
+  {
+    "offered_rps": 24000,
+    "answered_rps": 22735,
+    "p50_ms": 7.47,
+    "p99_ms": 93.51,
+    "error_pct": 6.59,
+    "r429_pct": 0.0,
+    "r5xx_pct": 6.59,
+    "net_pct": 0.0,
+    "other": 0
+  },
+  {
+    "offered_rps": 28000,
+    "answered_rps": 14304,
+    "p50_ms": 37.37,
+    "p99_ms": 279.06,
+    "error_pct": 49.7,
+    "r429_pct": 0.0,
+    "r5xx_pct": 49.7,
+    "net_pct": 0.0,
+    "other": 0
+  },
+  {
+    "offered_rps": 32000,
+    "answered_rps": 9913,
+    "p50_ms": 28.62,
+    "p99_ms": 371.7,
+    "error_pct": 69.67,
+    "r429_pct": 0.0,
+    "r5xx_pct": 69.67,
+    "net_pct": 0.0,
+    "other": 0
+  }
+]

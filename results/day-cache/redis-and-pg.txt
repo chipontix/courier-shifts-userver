@@ -1,0 +1,13 @@
+Earnings cache effectiveness, 60 s at 12k RPS (720k requests, 431,722 of
+them earnings reads), counted with `redis-cli info commandstats` after the run.
+
+                         baseline (hash per courier)   day-cache (key per courier-day)
+earnings reads           431,722 HGET                  431,722 MGET
+cache fills              358,279 HSET + 358,279 EXPIRE 173,484 SET EX
+hit rate                 17.0 %                        59.8 %
+Redis commands (reads)   1,148,280                     605,206   (-47 %)
+PG earnings queries      358,279                       173,484   (-52 %)
+invalidations (DEL)      143,364                       143,470
+
+From the perf profiles (results/*/flamegraph.svg, 30 s at 12k RPS):
+GetEarnings handler      19.2 % of 1.32 cores = 0.25   13.3 % of 1.16 cores = 0.15

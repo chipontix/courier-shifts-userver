@@ -80,7 +80,53 @@ std::int64_t RequireInt(const json::Value& body, std::string_view field) {
     return value.As<std::int64_t>();
 }
 
-std::string EarningsCacheKey(std::int64_t courier_id) { return fmt::format("earnings:{}", courier_id); }
+using Days = std::chrono::duration<std::int64_t, std::ratio<86400>>;
+
+// Earnings are cached as the courier's work per UTC day of shift start, so a write invalidates one day instead of
+// every cached period of the courier. `{courier}` is a hash tag: all keys of a courier share a Redis Cluster slot,
+// which keeps MGET valid if the cache is ever sharded.
+std::string EarningsCacheKey(std::int64_t courier_id, std::int64_t day) {
+    return fmt::format("earnings:{{{}}}:{}", courier_id, day);
+}
+
+std::int64_t DayOf(TimePoint tp) { return std::chrono::floor<Days>(tp.time_since_epoch()).count(); }
+
+constexpr std::int64_t kMaxEarningsWindowDays = 31;
+
+struct DayWork {
+    std::int64_t start_us{0};  // PostgreSQL timestamps have microsecond precision
+    ShiftWork work;
+};
+
+std::string SerializeDay(const std::vector<DayWork>& shifts) {
+    json::ValueBuilder day{json::Type::kArray};
+    for (const auto& shift : shifts) {
+        json::ValueBuilder item;
+        item["id"] = shift.work.shift_id;
+        item["zone"] = shift.work.zone;
+        item["start_us"] = shift.start_us;
+        item["duration_s"] = shift.work.duration.count();
+        item["deliveries"] = shift.work.deliveries;
+        item["distance_m"] = shift.work.distance_m;
+        day.PushBack(std::move(item));
+    }
+    return json::ToString(day.ExtractValue());
+}
+
+std::vector<DayWork> ParseDay(const std::string& raw) {
+    std::vector<DayWork> shifts;
+    for (const auto& item : json::FromString(raw)) {
+        shifts.push_back(
+            {item["start_us"].As<std::int64_t>(),
+             {item["id"].As<std::int64_t>(),
+              item["zone"].As<std::string>(),
+              std::chrono::seconds{item["duration_s"].As<std::int64_t>()},
+              item["deliveries"].As<std::int64_t>(),
+              item["distance_m"].As<std::int64_t>()}}
+        );
+    }
+    return shifts;
+}
 
 struct ShiftRow {
     std::int64_t id;
@@ -112,9 +158,9 @@ HandlerBase::HandlerBase(
       config_(context.FindComponent<userver::components::DynamicConfig>().GetSource())
 {}
 
-void HandlerBase::InvalidateEarnings(std::int64_t courier_id) const {
+void HandlerBase::InvalidateEarnings(std::int64_t courier_id, TimePoint shift_start) const {
     try {
-        redis_->Del(EarningsCacheKey(courier_id), kRedisCc).Get();
+        redis_->Del(EarningsCacheKey(courier_id, DayOf(shift_start)), kRedisCc).Get();
     } catch (const std::exception& e) {
         // The cache entry expires by TTL anyway; failing the write would be worse.
         LOG_ERROR() << "failed to invalidate earnings cache for courier " << courier_id << ": " << e;
@@ -177,7 +223,7 @@ json::Value CreateShift::HandleRequestJsonThrow(
     } catch (const pg::ForeignKeyViolation&) {
         throw ResourceNotFound(ExternalBody{fmt::format("courier {} not found", courier_id)});
     }
-    InvalidateEarnings(courier_id);
+    InvalidateEarnings(courier_id, starts_at);
 
     request.SetResponseStatus(HttpStatus::kCreated);
     json::ValueBuilder response;
@@ -192,17 +238,21 @@ json::Value CancelShift::HandleRequestJsonThrow(
 ) const {
     const auto shift_id = ParseId(request.GetPathArg("shift_id"), "shift_id");
     // Idempotent: cancelling twice keeps the first cancellation time.
-    const auto courier_id = pg_->Execute(
-                                   kMaster,
-                                   "UPDATE courier_shifts.shifts SET cancelled_at = coalesce(cancelled_at, now()) "
-                                   "WHERE id = $1 RETURNING courier_id",
-                                   shift_id
+    struct Cancelled {
+        std::int64_t courier_id;
+        pg::TimePointTz starts_at;
+    };
+    const auto cancelled = pg_->Execute(
+                                  kMaster,
+                                  "UPDATE courier_shifts.shifts SET cancelled_at = coalesce(cancelled_at, now()) "
+                                  "WHERE id = $1 RETURNING courier_id, lower(period)",
+                                  shift_id
     )
-                                .AsOptionalSingleRow<std::int64_t>();
-    if (!courier_id) {
+                               .AsOptionalSingleRow<Cancelled>(pg::kRowTag);
+    if (!cancelled) {
         throw ResourceNotFound(ExternalBody{fmt::format("shift {} not found", shift_id)});
     }
-    InvalidateEarnings(*courier_id);
+    InvalidateEarnings(cancelled->courier_id, cancelled->starts_at.GetUnderlying());
 
     json::ValueBuilder response;
     response["id"] = shift_id;
@@ -256,6 +306,7 @@ json::Value CreateAssignment::HandleRequestJsonThrow(
     struct Inserted {
         std::int64_t id;
         std::int64_t courier_id;
+        pg::TimePointTz shift_start;
     };
     std::optional<Inserted> inserted;
     try {
@@ -264,12 +315,12 @@ json::Value CreateAssignment::HandleRequestJsonThrow(
                           // FOR SHARE: a concurrent cancel waits for this insert (or wins and the
                           // re-checked row no longer matches), so no delivery lands on a cancelled shift.
                           "WITH s AS ("
-                          "  SELECT id, courier_id FROM courier_shifts.shifts "
+                          "  SELECT id, courier_id, lower(period) AS shift_start FROM courier_shifts.shifts "
                           "  WHERE id = $1 AND cancelled_at IS NULL AND period @> $4::timestamptz FOR SHARE"
                           "), ins AS ("
                           "  INSERT INTO courier_shifts.assignments (shift_id, order_id, distance_m, delivered_at) "
                           "  SELECT id, $2, $3, $4 FROM s RETURNING id"
-                          ") SELECT ins.id, s.courier_id FROM ins, s",
+                          ") SELECT ins.id, s.courier_id, s.shift_start FROM ins, s",
                           shift_id,
                           order_id,
                           static_cast<std::int32_t>(distance_m),
@@ -289,7 +340,7 @@ json::Value CreateAssignment::HandleRequestJsonThrow(
         }
         throw ConflictError(ExternalBody{"shift is cancelled or delivered_at is outside of it"});
     }
-    InvalidateEarnings(inserted->courier_id);
+    InvalidateEarnings(inserted->courier_id, inserted->shift_start.GetUnderlying());
 
     request.SetResponseStatus(HttpStatus::kCreated);
     json::ValueBuilder response;
@@ -303,53 +354,114 @@ json::Value GetEarnings::HandleRequestJsonThrow(
     userver::server::request::RequestContext&
 ) const {
     const auto courier_id = ParseId(request.GetPathArg("courier_id"), "courier_id");
-    const auto& from_raw = request.GetArg("from");
-    const auto& to_raw = request.GetArg("to");
-    const auto from = ParseTime(from_raw, "from");
-    const auto to = ParseTime(to_raw, "to");
+    const auto from = ParseTime(request.GetArg("from"), "from");
+    const auto to = ParseTime(request.GetArg("to"), "to");
+    if (to <= from) {
+        ThrowBadRequest("'to' must be after 'from'");
+    }
+    const auto first_day = DayOf(from);
+    const auto last_day = DayOf(to - std::chrono::microseconds{1});
+    if (last_day - first_day + 1 > kMaxEarningsWindowDays) {
+        ThrowBadRequest(fmt::format("the window must not exceed {} days", kMaxEarningsWindowDays));
+    }
 
     const auto snapshot = config_.GetSnapshot();
-    const auto& tariffs = snapshot[kTariffs];
-    const auto key = EarningsCacheKey(courier_id);
-    const auto field = fmt::format("{}|{}|v{}", from_raw, to_raw, tariffs.version);
-
+    std::vector<std::string> keys;
+    for (auto day = first_day; day <= last_day; ++day) {
+        keys.push_back(EarningsCacheKey(courier_id, day));
+    }
+    std::vector<std::optional<std::string>> cached(keys.size());
     try {
-        if (auto cached = redis_->Hget(key, field, kRedisCc).Get()) {
-            return json::FromString(*cached);
-        }
+        cached = redis_->Mget(keys, kRedisCc).Get();
     } catch (const std::exception& e) {
         LOG_WARNING() << "earnings cache read failed, falling back to the database: " << e;
     }
 
-    struct WorkRow {
-        std::int64_t shift_id;
-        std::string zone;
-        std::int64_t duration_s;
-        std::int64_t deliveries;
-        std::int64_t distance_m;
-    };
-    const auto rows = pg_->Execute(
-                             kMaster,
-                             "SELECT s.id, s.zone, "
-                             "  EXTRACT(EPOCH FROM upper(s.period) - lower(s.period))::bigint, "
-                             "  count(a.id), coalesce(sum(a.distance_m), 0)::bigint "
-                             "FROM courier_shifts.shifts s "
-                             "LEFT JOIN courier_shifts.assignments a ON a.shift_id = s.id "
-                             "WHERE s.courier_id = $1 AND s.cancelled_at IS NULL "
-                             "  AND lower(s.period) >= $2 AND lower(s.period) < $3 "
-                             "GROUP BY s.id ORDER BY lower(s.period)",
-                             courier_id,
-                             pg::TimePointTz{from},
-                             pg::TimePointTz{to}
-    )
-                          .AsContainer<std::vector<WorkRow>>(pg::kRowTag);
+    // Days are contiguous, so one range query covers all the missing ones (rows of cached days are dropped).
+    std::vector<std::vector<DayWork>> days(keys.size());
+    std::optional<std::int64_t> first_missing;
+    std::int64_t last_missing = 0;
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        if (cached[i]) {
+            days[i] = ParseDay(*cached[i]);
+        } else {
+            const auto day = first_day + static_cast<std::int64_t>(i);
+            first_missing = first_missing.value_or(day);
+            last_missing = day;
+        }
+    }
+
+    if (first_missing) {
+        struct WorkRow {
+            std::int64_t shift_id;
+            std::string zone;
+            std::int64_t start_us;
+            std::int64_t duration_s;
+            std::int64_t deliveries;
+            std::int64_t distance_m;
+        };
+        const auto range_start = TimePoint{Days{*first_missing}};
+        const auto range_end = TimePoint{Days{last_missing + 1}};
+        const auto rows = pg_->Execute(
+                                 kMaster,
+                                 "SELECT s.id, s.zone, "
+                                 "  (EXTRACT(EPOCH FROM lower(s.period)) * 1000000)::bigint, "
+                                 "  EXTRACT(EPOCH FROM upper(s.period) - lower(s.period))::bigint, "
+                                 "  count(a.id), coalesce(sum(a.distance_m), 0)::bigint "
+                                 "FROM courier_shifts.shifts s "
+                                 "LEFT JOIN courier_shifts.assignments a ON a.shift_id = s.id "
+                                 "WHERE s.courier_id = $1 AND s.cancelled_at IS NULL "
+                                 "  AND lower(s.period) >= $2 AND lower(s.period) < $3 "
+                                 "GROUP BY s.id ORDER BY lower(s.period)",
+                                 courier_id,
+                                 pg::TimePointTz{range_start},
+                                 pg::TimePointTz{range_end}
+        )
+                              .AsContainer<std::vector<WorkRow>>(pg::kRowTag);
+
+        std::vector<bool> missing(keys.size());
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            missing[i] = !cached[i];
+        }
+        for (const auto& row : rows) {
+            const auto i = static_cast<std::size_t>(DayOf(TimePoint{std::chrono::microseconds{row.start_us}}) - first_day);
+            if (missing[i]) {
+                days[i].push_back(
+                    {row.start_us,
+                     {row.shift_id, row.zone, std::chrono::seconds{row.duration_s}, row.deliveries, row.distance_m}}
+                );
+            }
+        }
+
+        // ponytail: a reader that queried the DB before a concurrent write can store a stale day after that write's
+        // invalidation; it lives until TTL. Version the day key (INCR on write) if that window matters.
+        const auto ttl = snapshot[kEarningsCacheTtl];
+        std::vector<userver::storages::redis::RequestSet> writes;
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            if (missing[i]) {
+                writes.push_back(redis_->Set(keys[i], SerializeDay(days[i]), ttl, kRedisCc));
+            }
+        }
+        try {
+            for (auto& write : writes) {
+                write.Get();
+            }
+        } catch (const std::exception& e) {
+            LOG_WARNING() << "earnings cache write failed: " << e;
+        }
+    }
 
     std::vector<ShiftWork> work;
-    work.reserve(rows.size());
-    for (const auto& row : rows) {
-        work.push_back({row.shift_id, row.zone, std::chrono::seconds{row.duration_s}, row.deliveries, row.distance_m}
-        );
+    for (const auto& day : days) {
+        for (const auto& shift : day) {
+            const TimePoint start{std::chrono::microseconds{shift.start_us}};
+            if (start >= from && start < to) {
+                work.push_back(shift.work);
+            }
+        }
     }
+
+    const auto& tariffs = snapshot[kTariffs];
     const auto earnings = ComputeEarnings(tariffs, work);
 
     json::ValueBuilder response;
@@ -365,17 +477,7 @@ json::Value GetEarnings::HandleRequestJsonThrow(
         item["total_cents"] = shift.total_cents;
         response["shifts"].PushBack(std::move(item));
     }
-    auto result = response.ExtractValue();
-
-    // ponytail: a reader that queried the DB before a concurrent write can store a stale entry after that write's
-    // invalidation; it lives until TTL. Version the key per courier (INCR on write) if that window matters.
-    try {
-        redis_->Hset(key, field, json::ToString(result), kRedisCc).Get();
-        redis_->Expire(key, snapshot[kEarningsCacheTtl], kRedisCc).Get();
-    } catch (const std::exception& e) {
-        LOG_WARNING() << "earnings cache write failed: " << e;
-    }
-    return result;
+    return response.ExtractValue();
 }
 
 }  // namespace courier_shifts

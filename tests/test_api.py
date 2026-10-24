@@ -1,3 +1,6 @@
+import datetime
+import json
+
 import pytest
 
 DAY = '2026-10-20'
@@ -142,20 +145,41 @@ async def test_earnings_default_tariffs(service_client):
     }
 
 
+def day_key(courier_id, day=DAY):
+    days = (datetime.date.fromisoformat(day) - datetime.date(1970, 1, 1)).days
+    return f'earnings:{{{courier_id}}}:{days}'
+
+
 async def test_earnings_cache_invalidated_by_writes(service_client, redis_standalone_store):
     courier_id = await create_courier(service_client)
     shift_id = (await create_shift(service_client, courier_id, ts('09:00'), ts('10:00'))).json()['id']
 
     first = await earnings(service_client, courier_id)
     assert first['total_cents'] == 25000
-    assert redis_standalone_store.exists(f'earnings:{courier_id}')
+    assert redis_standalone_store.exists(day_key(courier_id))
 
     assert (await assign(service_client, shift_id, 'o-1', 0, ts('09:30'))).status == 201
-    assert not redis_standalone_store.exists(f'earnings:{courier_id}')
+    assert not redis_standalone_store.exists(day_key(courier_id))
     assert (await earnings(service_client, courier_id))['total_cents'] == 34000
 
     assert (await service_client.post(f'/v1/shifts/{shift_id}/cancel')).status == 200
+    assert not redis_standalone_store.exists(day_key(courier_id))
     assert (await earnings(service_client, courier_id))['total_cents'] == 0
+
+
+async def test_write_invalidates_only_its_day(service_client, redis_standalone_store):
+    courier_id = await create_courier(service_client)
+    await create_shift(service_client, courier_id, ts('09:00'), ts('10:00'))
+    other_day = '2026-10-21'
+    other = (
+        await create_shift(service_client, courier_id, ts('09:00', other_day), ts('10:00', other_day))
+    ).json()['id']
+    await earnings(service_client, courier_id)
+    await earnings(service_client, courier_id, other_day)
+
+    assert (await assign(service_client, other, 'o-1', 0, ts('09:30', other_day))).status == 201
+    assert redis_standalone_store.exists(day_key(courier_id))
+    assert not redis_standalone_store.exists(day_key(courier_id, other_day))
 
 
 async def test_earnings_served_from_cache(service_client, redis_standalone_store):
@@ -163,11 +187,43 @@ async def test_earnings_served_from_cache(service_client, redis_standalone_store
     await create_shift(service_client, courier_id, ts('09:00'), ts('10:00'))
     assert (await earnings(service_client, courier_id))['total_cents'] == 25000
 
-    # Overwrite the cached entry: a second read must return it without touching the database.
-    key = f'earnings:{courier_id}'
-    (field,) = redis_standalone_store.hkeys(key)
-    redis_standalone_store.hset(key, field, '{"total_cents": 1}')
-    assert (await earnings(service_client, courier_id)) == {'total_cents': 1}
+    # Replace the cached day: the next read must use it without touching the database.
+    start_us = int(datetime.datetime.fromisoformat(ts('09:00')).timestamp()) * 1_000_000
+    fake = [{'id': 1, 'zone': 'north', 'start_us': start_us, 'duration_s': 36000, 'deliveries': 0, 'distance_m': 0}]
+    redis_standalone_store.set(day_key(courier_id), json.dumps(fake))
+    assert (await earnings(service_client, courier_id))['total_cents'] == 250000
+
+
+async def test_earnings_window_is_exact_across_days(service_client):
+    courier_id = await create_courier(service_client)
+    for day in ('2026-10-20', '2026-10-21', '2026-10-22'):
+        await create_shift(service_client, courier_id, ts('09:00', day), ts('10:00', day))
+    await create_shift(service_client, courier_id, ts('18:00', '2026-10-22'), ts('19:00', '2026-10-22'))
+
+    async def total(start, end):
+        response = await service_client.get(
+            f'/v1/couriers/{courier_id}/earnings', params={'from': start, 'to': end},
+        )
+        assert response.status == 200
+        return response.json()['total_cents']
+
+    assert await total(ts('00:00', '2026-10-20'), ts('00:00', '2026-10-23')) == 4 * 25000
+    # 09:00 on the 20th is included (from is inclusive), 18:00 on the 22nd is excluded (to is exclusive)
+    assert await total(ts('09:00', '2026-10-20'), ts('18:00', '2026-10-22')) == 3 * 25000
+    assert await total(ts('09:01', '2026-10-20'), ts('18:01', '2026-10-22')) == 3 * 25000
+
+
+@pytest.mark.parametrize(
+    'start, end',
+    [
+        (ts('10:00'), ts('10:00')),
+        (ts('10:00'), ts('09:00')),
+        ('2026-10-01T00:00:00Z', '2026-11-02T00:00:00Z'),
+    ],
+)
+async def test_earnings_window_validation(service_client, start, end):
+    response = await service_client.get('/v1/couriers/1/earnings', params={'from': start, 'to': end})
+    assert response.status == 400
 
 
 @pytest.mark.config(

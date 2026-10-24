@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <string_view>
 
@@ -17,8 +18,9 @@ public:
     HandlerBase(const userver::components::ComponentConfig&, const userver::components::ComponentContext&);
 
 protected:
-    /// Drops cached earnings of a courier after any write that changes them.
-    void InvalidateEarnings(std::int64_t courier_id) const;
+    /// Drops the cached work of the courier's UTC day that contains `shift_start`
+    /// after any write that changes it.
+    void InvalidateEarnings(std::int64_t courier_id, std::chrono::system_clock::time_point shift_start) const;
 
     userver::storages::postgres::ClusterPtr pg_;
     userver::storages::redis::ClientPtr redis_;
