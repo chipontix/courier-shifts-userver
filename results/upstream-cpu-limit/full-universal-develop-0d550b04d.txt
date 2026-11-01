@@ -1,0 +1,5 @@
+[  FAILED  ] FormatsJson/MemberAccess/0.MemberPathsByIterator, where TypeParam = userver::v3_3_rc::formats::json::Value (0 ms)
+[  FAILED  ] FormatsJsonSpecificMemberAccess.ArrayIteratorRetainsCopiedValuesAfterAdvancing (0 ms)
+[  FAILED  ] FormatsJsonSpecificMemberAccess.ArrayIteratorPostincrementRetainsPreviousValue (0 ms)
+[  FAILED  ] FormatsJsonSpecificMemberAccess.ReverseArrayIteratorRetainsValuesAndPaths (0 ms)
+[  PASSED  ] 2156 tests.
