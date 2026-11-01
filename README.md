@@ -179,7 +179,24 @@ Details: [`results/day-cache/redis-and-pg.txt`](results/day-cache/redis-and-pg.t
 2. Exclusion-constraint deadlocks (40P01) came back as 500. Fixed with a per-courier advisory lock.
 3. The service did not start outside testsuite (`http-client` depended on a testsuite-only component).
 4. `CPU_LIMIT=2` is silently ignored by userver (it wants `2c`), which put congestion control in fake mode.
+   The root cause is in userver itself, see [Upstream fix in userver](#upstream-fix-in-userver).
 5. The default `nofile=1024` in the container gave `EMFILE` and a crash under thousands of connections.
+
+## Upstream fix in userver
+
+Tracing bug 4 led to a bug in userver's `hostinfo::CpuLimit()` (v2.16 to v3.2 and `develop`). Since the cgroup v2
+fallback it returns 0 instead of "no limit", so `IsInRtc()` is always true. Congestion control with the
+default `only-rtc: true` then never refuses to start without a CPU limit and silently runs in fake mode.
+The same code truncates a fractional cgroup quota: `--cpus=1.5` becomes 1 core, `--cpus=0.5` becomes 0.
+
+The fork branch [`chipontix/userver@fix-hostinfo-cpu-limit`](https://github.com/chipontix/userver/tree/fix-hostinfo-cpu-limit)
+has a regression test (commit `800c60d46`, both cases fail) and the fix (commit `c4bc0dc6a`, both pass, and
+so does the whole `userver-universal-unittest`). Test output:
+[`results/upstream-cpu-limit/`](results/upstream-cpu-limit/). The problem, how to reproduce it, the
+contribution rules and the PR text are in [`UPSTREAM-PR.md`](UPSTREAM-PR.md). The PR is not opened yet.
+
+This service is not affected with its current config (`CPU_LIMIT=2c` and `only-rtc: false`), so it stays on
+userver 3.2.
 
 ## Reproduce
 
@@ -204,6 +221,12 @@ make bench LABEL=mine
   the code.
 - The optional YDB backend was not built: `ydbplatform/local-ydb` ships only for amd64, and running it under
   emulation would make any measurement meaningless.
+
+## How it was built
+
+The code, tests and documentation in this repository, and the userver fix in the fork, were written by the
+AI coding agent Claude Code (Anthropic), with Rabiya setting the task and directing the work: she chose the
+problem and the stack and set the requirements. The commits are under her account.
 
 ## License
 
