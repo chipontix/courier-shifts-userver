@@ -198,6 +198,14 @@ contribution rules and the PR text are in [`UPSTREAM-PR.md`](UPSTREAM-PR.md). Th
 This service is not affected with its current config (`CPU_LIMIT=2c` and `only-rtc: false`), so it stays on
 userver 3.2.
 
+A second, independent branch,
+[`chipontix/userver@fix-crypto-openssl4`](https://github.com/chipontix/userver/tree/fix-crypto-openssl4),
+makes `userver-universal` build with OpenSSL 4 (the current Homebrew `openssl`). Before it, the build stopped
+on a `const X509_NAME*` compile error and then on the removed ENGINE API at link time. After it, all 2161
+`userver-universal-unittest` tests pass against OpenSSL 4.1. Output: [`results/upstream-openssl4/`](results/upstream-openssl4/),
+details and PR text: [`UPSTREAM-PR.md`](UPSTREAM-PR.md). Also not opened yet. The project's Ubuntu 24.04
+image uses OpenSSL 3.0 and is not affected.
+
 ## Reproduce
 
 Requirements: Docker (with compose) and python3. Everything else runs in the `courier-dev` image

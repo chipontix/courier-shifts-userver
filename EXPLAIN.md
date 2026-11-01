@@ -74,6 +74,7 @@ advisory lock, потому что ретраи не сходятся; кэш п
 | GetEarnings 19.2% / 13.3% CPU, hit rate 17% / 60%, Redis-команды 1,148,280 / 605,206, PG-запросы 358,279 / 173,484 | `results/day-cache/redis-and-pg.txt`, `results/*/flamegraph.svg` | `make bench` (профиль `perf`), затем `redis-cli info commandstats` |
 | «highest step without collapse 32k / 36k» | `results/ladder-repeats/high-*.md` | см. строку про 32k…48k |
 | userver: 2 теста падают до фикса, проходят после; 2162 теста universal | `results/upstream-cpu-limit/` | команды в `UPSTREAM-PR.md`, раздел «How to reproduce» |
+| userver с OpenSSL 4: ошибка компиляции до фикса, 2161 тест universal после | `results/upstream-openssl4/` | команды в `UPSTREAM-PR.md`, PR 2, «How to reproduce» |
 
 Числа в таблицах README перенесены из этих `.md`/`.txt` файлов. Отдельного скрипта, который сам
 вписывает их в README, нет. Это ограничение: при пересчёте таблицы надо обновить руками по файлам.
@@ -100,10 +101,21 @@ advisory lock, потому что ретраи не сходятся; кэш п
 `crypto/certificate.cpp`, а re2 2023-03-01 не собирается с ICU 78. Собирали с заголовками OpenSSL 3.6
 и локальным re2 без ICU. Clang выкидывает `-I`, если тот же каталог (даже через симлинк) уже есть
 в `-isystem`, поэтому заголовки OpenSSL 3 пришлось скопировать. Ещё 4 теста `formats::json` иногда
-падают и на чистом `develop`: они плавающие, это отдельная тема.
+падают и на чистом `develop`: они плавающие, это отдельная тема, её не трогали.
 
 **Влияет ли на проект.** При текущем конфиге нет: `CPU_LIMIT=2c` задан явно, `only-rtc: false`, CPU
 выделены через cpuset, а не квоту. Поэтому проект остался на userver 3.2.
+
+**Второй фикс: сборка с OpenSSL 4** (ветка `fix-crypto-openssl4`, коммиты `ed25e63c1` — тест на
+`Certificate::GetSubject()`, `26961335c` — фикс). Нашёлся, пока собирали первый фикс: brew-шный `openssl`
+стал версии 4.1, и `userver-universal` перестал собираться. Причин две.
+1. `X509_get_subject_name()` теперь возвращает `const X509_NAME*`. Лечится словом `const`: функция печати
+   принимает const ещё с OpenSSL 1.1.
+2. В OpenSSL 4 удалили ENGINE API. Заголовок остался, поэтому код компилируется, но падает линковка.
+   Лечится `#ifndef OPENSSL_NO_ENGINE`: этот макрос OpenSSL сам определяет, когда движков нет.
+С OpenSSL 4.1 весь `userver-universal-unittest` проходит (2161 тест), с заголовками OpenSSL 3.6 оба
+изменённых файла компилируются. `core` с OpenSSL 4 не собирали. Проект не затронут: в его образе
+Ubuntu 24.04 стоит OpenSSL 3.0.
 
 ## 5. Десять вопросов с собеседования
 
