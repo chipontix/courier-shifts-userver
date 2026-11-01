@@ -1,0 +1,17 @@
+userver/universal/src/crypto/certificate.cpp:98:16: error: cannot initialize a variable of type 'X509_NAME *' (aka 'X509_name_st *') with an rvalue of type 'const X509_NAME *' (aka 'const X509_name_st *')
+   98 |     X509_NAME* subject_name = X509_get_subject_name(x509);
+      |                ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+make[3]: *** [universal/CMakeFiles/userver-universal.dir/src/crypto/certificate.cpp.o] Error 1
+[ 40%] Building CXX object universal/CMakeFiles/userver-universal.dir/src/crypto/verifiers.cpp.o
+[ 41%] Building CXX object universal/CMakeFiles/userver-universal.dir/src/decimal64/decimal64.cpp.o
+[ 41%] Building CXX object universal/CMakeFiles/userver-universal.dir/src/formats/common/path.cpp.o
+--
+make[2]: *** [universal/CMakeFiles/userver-universal.dir/all] Error 2
+make[2]: Target `universal/CMakeFiles/userver-universal-unittest.dir/all' not remade because of errors.
+make[1]: *** [universal/CMakeFiles/userver-universal-unittest.dir/rule] Error 2
+make[1]: Target `userver-universal-unittest' not remade because of errors.
+make: *** [userver-universal-unittest] Error 2
+rc=2
+22.5 GB free
+-- Found OpenSSL: /opt/homebrew/opt/openssl@4/lib/libcrypto.a (found version "4.1.0")

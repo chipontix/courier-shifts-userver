@@ -1,0 +1,157 @@
+[ RUN      ] CryptoAwsSignRequestV4.AuthGetObject
+[       OK ] CryptoAwsSignRequestV4.AuthGetObject (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthPutObject
+[       OK ] CryptoAwsSignRequestV4.AuthPutObject (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthQueryParameterWithoutValue
+[       OK ] CryptoAwsSignRequestV4.AuthQueryParameterWithoutValue (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthQueryParametersSorted
+[       OK ] CryptoAwsSignRequestV4.AuthQueryParametersSorted (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthPathStyleAddressing
+[       OK ] CryptoAwsSignRequestV4.AuthPathStyleAddressing (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthEncodedPathAndQuery
+[       OK ] CryptoAwsSignRequestV4.AuthEncodedPathAndQuery (0 ms)
+[ RUN      ] CryptoAwsSignRequestV4.AuthRequiresHostHeader
+[       OK ] CryptoAwsSignRequestV4.AuthRequiresHostHeader (0 ms)
+[ RUN      ] Crypto.Base64
+[       OK ] Crypto.Base64 (0 ms)
+[ RUN      ] Crypto.Base64Url
+[       OK ] Crypto.Base64Url (0 ms)
+[ RUN      ] Crypto.CertificatePemDefault
+[       OK ] Crypto.CertificatePemDefault (0 ms)
+[ RUN      ] Crypto.CertificatePemRoundtripRsa
+[       OK ] Crypto.CertificatePemRoundtripRsa (8 ms)
+[ RUN      ] Crypto.CertificatePemRoundtripRsaBagAttributes
+[       OK ] Crypto.CertificatePemRoundtripRsaBagAttributes (0 ms)
+[ RUN      ] Crypto.CertificatePemRoundtripEc
+[       OK ] Crypto.CertificatePemRoundtripEc (0 ms)
+[ RUN      ] Crypto.CertificateSubject
+[       OK ] Crypto.CertificateSubject (0 ms)
+[ RUN      ] Crypto.Sha1
+[       OK ] Crypto.Sha1 (0 ms)
+[ RUN      ] Crypto.Sha224
+[       OK ] Crypto.Sha224 (0 ms)
+[ RUN      ] Crypto.Sha256
+[       OK ] Crypto.Sha256 (0 ms)
+[ RUN      ] Crypto.Sha384
+[       OK ] Crypto.Sha384 (0 ms)
+[ RUN      ] Crypto.Sha512
+[       OK ] Crypto.Sha512 (0 ms)
+[ RUN      ] Crypto.Md5
+[       OK ] Crypto.Md5 (0 ms)
+[ RUN      ] Crypto.Hmac
+[       OK ] Crypto.Hmac (0 ms)
+[ RUN      ] Crypto.Blake2b128
+[       OK ] Crypto.Blake2b128 (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemDefault
+[       OK ] Crypto.PrivateKeyPemDefault (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemEmptyPassword
+[       OK ] Crypto.PrivateKeyPemEmptyPassword (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemRoundtripRsa
+[       OK ] Crypto.PrivateKeyPemRoundtripRsa (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemRoundtripEc
+[       OK ] Crypto.PrivateKeyPemRoundtripEc (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemDecryptRsa
+[       OK ] Crypto.PrivateKeyPemDecryptRsa (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemDecryptEc
+[       OK ] Crypto.PrivateKeyPemDecryptEc (0 ms)
+[ RUN      ] Crypto.PrivateKeyPemEncRoundtripRsa
+[       OK ] Crypto.PrivateKeyPemEncRoundtripRsa (2 ms)
+[ RUN      ] Crypto.PrivateKeyPemEncRoundtripEc
+[       OK ] Crypto.PrivateKeyPemEncRoundtripEc (1 ms)
+[ RUN      ] Crypto.VerifyRsaFromComponents256
+[       OK ] Crypto.VerifyRsaFromComponents256 (0 ms)
+[ RUN      ] Crypto.VerifyRsaFromComponents512
+[       OK ] Crypto.VerifyRsaFromComponents512 (0 ms)
+[ RUN      ] Crypto.EcdsaVerifierFromComponents
+[       OK ] Crypto.EcdsaVerifierFromComponents (0 ms)
+[ RUN      ] Crypto.PublicKeyFromPrivateKeyRsa
+[       OK ] Crypto.PublicKeyFromPrivateKeyRsa (0 ms)
+[ RUN      ] Crypto.PublicKeyFromPrivateKeyEc
+[       OK ] Crypto.PublicKeyFromPrivateKeyEc (0 ms)
+[ RUN      ] Crypto.PublicKeyFromEmptyPrivateKey
+[       OK ] Crypto.PublicKeyFromEmptyPrivateKey (0 ms)
+[ RUN      ] Crypto.SignatureNone
+[       OK ] Crypto.SignatureNone (0 ms)
+[ RUN      ] Crypto.SignatureHs1
+[       OK ] Crypto.SignatureHs1 (0 ms)
+[ RUN      ] Crypto.SignatureHs256
+[       OK ] Crypto.SignatureHs256 (0 ms)
+[ RUN      ] Crypto.SignatureCMSSignVerify
+[       OK ] Crypto.SignatureCMSSignVerify (1 ms)
+[ RUN      ] Crypto.SignatureCMSVerify
+[       OK ] Crypto.SignatureCMSVerify (0 ms)
+[ RUN      ] Crypto.SignatureCMSVerifyRejectsForeignSigner
+[       OK ] Crypto.SignatureCMSVerifyRejectsForeignSigner (1 ms)
+[ RUN      ] Crypto.SignatureCMSVerifyEmbeddedOwnCert
+[       OK ] Crypto.SignatureCMSVerifyEmbeddedOwnCert (1 ms)
+[ RUN      ] Crypto.SignatureRs1
+[       OK ] Crypto.SignatureRs1 (0 ms)
+[ RUN      ] Crypto.SignatureRs256
+[       OK ] Crypto.SignatureRs256 (0 ms)
+[ RUN      ] Crypto.SignatureRs512
+[       OK ] Crypto.SignatureRs512 (1 ms)
+[ RUN      ] Crypto.SignatureEs256
+[       OK ] Crypto.SignatureEs256 (0 ms)
+[ RUN      ] Crypto.SignatureEs512
+[       OK ] Crypto.SignatureEs512 (3 ms)
+[ RUN      ] Crypto.SignaturePs1
+[       OK ] Crypto.SignaturePs1 (0 ms)
+[ RUN      ] Crypto.SignaturePs256
+[       OK ] Crypto.SignaturePs256 (0 ms)
+[ RUN      ] Crypto.SignaturePs512
+[       OK ] Crypto.SignaturePs512 (1 ms)
+[ RUN      ] Decimal64.Hash
+[       OK ] Decimal64.Hash (0 ms)
+[ RUN      ] FormatsJson.HashCompile
+[       OK ] FormatsJson.HashCompile (0 ms)
+[ RUN      ] ContentType.Hashing
+[       OK ] ContentType.Hashing (0 ms)
+[ RUN      ] HeaderMapHasher.SameAtCompileTimeAndRuntime
+[       OK ] HeaderMapHasher.SameAtCompileTimeAndRuntime (0 ms)
+[ RUN      ] HeaderMapHashDos.ModuloCollisions
+[       OK ] HeaderMapHashDos.ModuloCollisions (10 ms)
+[ RUN      ] HeaderMapHashDos.HashAbuse
+[       OK ] HeaderMapHashDos.HashAbuse (0 ms)
+[ RUN      ] HeaderMap.DefaultHeadersHashDistribution
+[       OK ] HeaderMap.DefaultHeadersHashDistribution (0 ms)
+[ RUN      ] FilterBloom.StringHash
+[       OK ] FilterBloom.StringHash (0 ms)
+[ RUN      ] SipHashCase.MatchesReferenceImplementation
+[       OK ] SipHashCase.MatchesReferenceImplementation (0 ms)
+[ RUN      ] SipHashCaseInsensitive.MatchesReferenceImplementation
+[       OK ] SipHashCaseInsensitive.MatchesReferenceImplementation (0 ms)
+[ RUN      ] SipHashCaseInsensitiveNoSse.MatchesReferenceImplementation
+[       OK ] SipHashCaseInsensitiveNoSse.MatchesReferenceImplementation (0 ms)
+[ RUN      ] TransparentMap.CustomTransparentHash
+[       OK ] TransparentMap.CustomTransparentHash (0 ms)
+[ RUN      ] WithSafeHash.Map
+[       OK ] WithSafeHash.Map (0 ms)
+[ RUN      ] WithSafeHash.Set
+[       OK ] WithSafeHash.Set (0 ms)
+[ RUN      ] StrIcases.Hash
+[       OK ] StrIcases.Hash (0 ms)
+[ RUN      ] StrIcases.HashIsRandomlySeeded
+[       OK ] StrIcases.HashIsRandomlySeeded (0 ms)
+[ RUN      ] StrCases.Hash
+[       OK ] StrCases.Hash (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/0
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/0 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/1
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/1 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/2
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/2 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/3
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/3 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/4
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/4 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/5
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/5 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeSuccessTest.Test/6
+[       OK ] Crypto/Base64UniversalDecodeSuccessTest.Test/6 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeFailureTest.Test/0
+[       OK ] Crypto/Base64UniversalDecodeFailureTest.Test/0 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeFailureTest.Test/1
+[       OK ] Crypto/Base64UniversalDecodeFailureTest.Test/1 (0 ms)
+[ RUN      ] Crypto/Base64UniversalDecodeFailureTest.Test/2
+[       OK ] Crypto/Base64UniversalDecodeFailureTest.Test/2 (0 ms)
+[  PASSED  ] 78 tests.

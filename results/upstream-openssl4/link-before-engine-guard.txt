@@ -1,0 +1,16 @@
+== link errors with OpenSSL 4.1 after the const fix in certificate.cpp, before the OPENSSL_NO_ENGINE guard
+Undefined symbols for architecture arm64:
+  "_ENGINE_by_id", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+  "_ENGINE_finish", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+  "_ENGINE_free", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+  "_ENGINE_init", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+  "_ENGINE_load_rdrand", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+  "_ENGINE_set_default", referenced from:
+      userver::v3_3_rc::crypto::Openssl::Openssl() in libuserver-universal.a[14](openssl.cpp.o)
+ld: symbol(s) not found for architecture arm64
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)

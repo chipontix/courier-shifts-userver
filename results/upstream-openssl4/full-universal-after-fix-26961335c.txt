@@ -1,0 +1,5 @@
+OPENSSL_CRYPTO_LIBRARY:FILEPATH=/opt/homebrew/opt/openssl@4/lib/libcrypto.a
+OPENSSL_INCLUDE_DIR:PATH=/opt/homebrew/opt/openssl@4/include
+OPENSSL_SSL_LIBRARY:FILEPATH=/opt/homebrew/opt/openssl@4/lib/libssl.a
+-- Found OpenSSL: /opt/homebrew/opt/openssl@4/lib/libcrypto.a (found version "4.1.0")
+[  PASSED  ] 2161 tests.

@@ -1,6 +1,15 @@
-# Upstream PR to userver: `hostinfo::CpuLimit()` reports a limit when there is none
+# Upstream PRs to userver
 
-Prepared in the fork, not opened. Rabiya opens the PR herself.
+Two independent PRs, each on its own branch of the fork. Both are prepared, neither is opened: Rabiya opens
+them herself.
+
+1. [`hostinfo::CpuLimit()` reports a limit when there is none](#pr-1-hostinfocpulimit-reports-a-limit-when-there-is-none)
+   (branch `fix-hostinfo-cpu-limit`).
+2. [userver does not build with OpenSSL 4](#pr-2-userver-does-not-build-with-openssl-4) (branch `fix-crypto-openssl4`).
+
+The section on CONTRIBUTING and repository rules applies to both.
+
+# PR 1: `hostinfo::CpuLimit()` reports a limit when there is none
 
 - Fork branch: <https://github.com/chipontix/userver/tree/fix-hostinfo-cpu-limit>
 - Base: `userver-framework/userver` `develop` at `0d550b04d`
@@ -84,7 +93,7 @@ Build notes for the Mac, none of which touch the patch:
 
 - Homebrew's `openssl` is now OpenSSL 4.1, and `universal/src/crypto/certificate.cpp:98` does not compile
   against it (`X509_get_subject_name` returns `const X509_NAME*`). The build used a copy of OpenSSL 3.6
-  headers. That is a separate upstream issue, not part of this PR.
+  headers. That is a separate upstream issue, fixed by PR 2 below.
 - re2 2023-03-01, which userver downloads, does not compile with Homebrew ICU 78, so re2 was built
   locally without ICU. yaml-cpp 0.8.0 was built locally as well.
 - Four `formats::json` iterator tests (`FormatsJsonSpecificMemberAccess.ArrayIterator*`,
@@ -152,4 +161,107 @@ including 200 shuffled repeats. The full `userver-universal-unittest` passes on 
 Release). `core` was not built locally, so the effect on `congestion_control` was checked by reading the
 code. The fix and the tests were prepared with the help of an AI coding assistant (Claude Code) and
 reviewed by me.
+```
+
+# PR 2: userver does not build with OpenSSL 4
+
+- Fork branch: <https://github.com/chipontix/userver/tree/fix-crypto-openssl4>
+- Base: `userver-framework/userver` `develop` at `0d550b04d`, independent of PR 1
+- Commits: [`ed25e63c1`](https://github.com/chipontix/userver/commit/ed25e63c1) (test for
+  `Certificate::GetSubject()`; with OpenSSL 4 the library does not build),
+  [`26961335c`](https://github.com/chipontix/userver/commit/26961335c) (fix, builds and passes)
+- Status on 2026-11-01: no issue or PR about OpenSSL 4 upstream (`gh search issues --include-prs` for
+  `OpenSSL 4`, `openssl 4.0`, `openssl@4`, `X509_get_subject_name`, `certificate.cpp`,
+  `OPENSSL_VERSION_MAJOR`). The only open PR that touches `crypto/certificate.cpp` is the 2024 wolfssl PR
+  (#523, "help wanted"), which does not change these lines. Check again right before opening.
+
+## The problem
+
+Homebrew switched `openssl` to OpenSSL 4 (4.1.0 on this Mac on 2026-11-01). `userver-universal` does not
+build against it, for two reasons:
+
+1. **Compile error.** OpenSSL 4 made `X509_get_subject_name()` return `const X509_NAME*`.
+   `universal/src/crypto/certificate.cpp:98` stores it in `X509_NAME*`:
+   `cannot initialize a variable of type 'X509_NAME *' with an rvalue of type 'const X509_NAME *'`.
+2. **Link error.** OpenSSL 4 removed the ENGINE API and defines `OPENSSL_NO_ENGINE`. `engine.h` still
+   declares the functions (stubs only with `OPENSSL_ENGINE_STUBS`), so `crypto/openssl.cpp` compiles, but
+   the link fails on `ENGINE_by_id`, `ENGINE_init`, `ENGINE_set_default`, `ENGINE_finish`, `ENGINE_free`,
+   `ENGINE_load_rdrand` from `TrySetDefaultEngineRdrand()`.
+
+With `make -k` the compile error is the only one in all of `universal`, and after fixing it the ENGINE
+symbols are the only link errors.
+
+## The fix
+
+- `const X509_NAME* subject_name`. `X509_NAME_print_ex()` takes `const X509_NAME*` since OpenSSL 1.1, so this
+  is correct for every supported version.
+- `#ifndef OPENSSL_NO_ENGINE` around `#include <openssl/engine.h>`, `TrySetDefaultEngineRdrand()` and its
+  call. That is the macro OpenSSL itself provides for builds without engines (OpenSSL 4 always, 3.x when
+  configured with `no-engine`). On a regular OpenSSL 3 build the macro is not defined, and the rdrand setup
+  runs as before.
+- A test `Crypto.CertificateSubject` (`GetSubject()` of the existing test certificate is
+  `CN=userver-crypto-test`), because `GetSubject()` had no test.
+
+## How to reproduce
+
+On macOS with Homebrew (`openssl` is OpenSSL 4), or anywhere with OpenSSL 4 found first by CMake:
+
+```bash
+git clone https://github.com/chipontix/userver && cd userver
+git checkout ed25e63c1            # test only, no fix
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSERVER_FEATURE_CORE=OFF \
+  -DUSERVER_FEATURE_CHAOTIC=OFF -DUSERVER_FEATURE_CHAOTIC_OPENAPI=OFF -DUSERVER_BUILD_TESTS=ON \
+  -DUSERVER_FEATURE_JEMALLOC=OFF
+cmake --build build --target userver-universal-unittest -j -- -k   # certificate.cpp:98 error
+git checkout 26961335c
+cmake --build build --target userver-universal-unittest -j
+./build/universal/userver-universal-unittest                         # all pass
+```
+
+Measured on 2026-11-01, macOS 26 on Apple M4 Max, Apple clang 21, Release, OpenSSL 4.1.0 static libraries
+from Homebrew (`results/upstream-openssl4/`):
+
+| | result | file |
+|---|---|---|
+| `ed25e63c1`, OpenSSL 4.1 | compile error `certificate.cpp:98`, the only one with `-k` | `build-before-fix-ed25e63c1.txt` |
+| const fix only, OpenSSL 4.1 | link error on 6 `ENGINE_*` symbols | `link-before-engine-guard.txt` |
+| `26961335c`, OpenSSL 4.1 | builds; `Crypto*` and TLS/hash/signer tests 78 of 78; whole `userver-universal-unittest` 2161 of 2161 | `crypto-tests-after-fix-26961335c.txt`, `full-universal-after-fix-26961335c.txt` |
+| `26961335c`, OpenSSL 3.6.3 headers | both changed files compile (`-fsyntax-only`); `OPENSSL_NO_ENGINE` is not defined, so the rdrand code stays | checked by hand, not saved |
+
+Not covered:
+
+- `core` was not built. Its OpenSSL calls (`engine/io/tls_wrapper.cpp`, `clients/http/request_state.cpp`)
+  were checked against the OpenSSL 4 headers by reading: `X509_get0_signature()` and
+  `X509_STORE_add_cert()` already take const pointers there, and there is no ENGINE use besides curl
+  option names. A full build of `core` with OpenSSL 4 may still find something.
+- The full test suite was not rerun on OpenSSL 3 after the fix. The full run on OpenSSL 3.6 is from PR 1,
+  without these two lines.
+- userver's CI does not test OpenSSL 4 yet. That may be worth mentioning in the PR, but it is the
+  maintainers' call.
+
+## Does it change this project?
+
+No. The project builds userver 3.2 in Ubuntu 24.04 (`docker/dev.Dockerfile`), which ships OpenSSL 3.0.
+
+## PR text
+
+**Title:** `fix crypto: build with OpenSSL 4`
+
+```markdown
+OpenSSL 4 breaks the build of `userver-universal` in two places:
+
+- `X509_get_subject_name()` now returns `const X509_NAME*`, so `Certificate::GetSubject()` no longer
+  compiles. `X509_NAME_print_ex()` takes a const pointer since OpenSSL 1.1, so the local variable becomes
+  const for all versions.
+- The ENGINE API is gone and OpenSSL 4 defines `OPENSSL_NO_ENGINE`. `engine.h` still declares the functions,
+  so `crypto/openssl.cpp` compiled but failed to link on `ENGINE_by_id()` and friends. The rdrand engine setup
+  is now skipped when `OPENSSL_NO_ENGINE` is defined, which also covers OpenSSL 3 builds configured with
+  `no-engine`. Regular OpenSSL 3 builds keep the current behaviour.
+
+`Certificate::GetSubject()` had no test, so this adds `Crypto.CertificateSubject`.
+
+Validation: on macOS (Apple clang 21, Release) against Homebrew OpenSSL 4.1.0, `userver-universal-unittest`
+did not build before the change and passes after it (2161 tests). With OpenSSL 3.6 headers both changed files
+still compile. `core` was not built against OpenSSL 4; its OpenSSL calls were checked against the headers only.
+The fix and the test were prepared with the help of an AI coding assistant (Claude Code) and reviewed by me.
 ```
