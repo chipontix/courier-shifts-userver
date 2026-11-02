@@ -17,6 +17,7 @@
 #include <userver/storages/postgres/io/chrono.hpp>
 #include <userver/storages/redis/client.hpp>
 #include <userver/storages/redis/component.hpp>
+#include <userver/testsuite/testpoint.hpp>
 #include <userver/utils/datetime_light.hpp>
 #include <userver/utils/from_string.hpp>
 
@@ -432,6 +433,8 @@ json::Value GetEarnings::HandleRequestJsonThrow(
                 );
             }
         }
+
+        TESTPOINT("earnings-before-cache-fill", {});
 
         // ponytail: a reader that queried the DB before a concurrent write can store a stale day after that write's
         // invalidation; it lives until TTL. Version the day key (INCR on write) if that window matters.
