@@ -90,6 +90,32 @@ std::string EarningsCacheKey(std::int64_t courier_id, std::int64_t day) {
     return fmt::format("earnings:{{{}}}:{}", courier_id, day);
 }
 
+// Every write to a day bumps its version. A reader fills the cache only if the version is still the one it saw
+// before its database query, so a day read before a concurrent write is never stored after that write.
+std::string EarningsVersionKey(std::int64_t courier_id, std::int64_t day) {
+    return EarningsCacheKey(courier_id, day) + ":v";
+}
+
+// KEYS: day, version. ARGV: version TTL, ms.
+const std::string kInvalidateDayScript = R"~(
+redis.call('INCR', KEYS[2])
+redis.call('PEXPIRE', KEYS[2], ARGV[1])
+return redis.call('DEL', KEYS[1])
+)~";
+
+// KEYS: day, version. ARGV: version seen before the database query ('' if none), day, TTL in ms.
+const std::string kFillDayScript = R"~(
+if (redis.call('GET', KEYS[2]) or '') ~= ARGV[1] then
+    return 0
+end
+redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+return 1
+)~";
+
+std::string ToMillisArg(std::chrono::seconds ttl) {
+    return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(ttl).count());
+}
+
 std::int64_t DayOf(TimePoint tp) { return std::chrono::floor<Days>(tp.time_since_epoch()).count(); }
 
 constexpr std::int64_t kMaxEarningsWindowDays = 31;
@@ -160,8 +186,19 @@ HandlerBase::HandlerBase(
 {}
 
 void HandlerBase::InvalidateEarnings(std::int64_t courier_id, TimePoint shift_start) const {
+    const auto day = DayOf(shift_start);
+    // ponytail: the version lives as long as a cached day; a reader stalled between its version read and its fill
+    // for longer than that could miss the bump. Readers take milliseconds.
+    const auto ttl = config_.GetSnapshot()[kEarningsCacheTtl];
     try {
-        redis_->Del(EarningsCacheKey(courier_id, DayOf(shift_start)), kRedisCc).Get();
+        redis_
+            ->Eval<std::int64_t>(
+                kInvalidateDayScript,
+                {EarningsCacheKey(courier_id, day), EarningsVersionKey(courier_id, day)},
+                {ToMillisArg(ttl)},
+                kRedisCc
+            )
+            .Get();
     } catch (const std::exception& e) {
         // The cache entry expires by TTL anyway; failing the write would be worse.
         LOG_ERROR() << "failed to invalidate earnings cache for courier " << courier_id << ": " << e;
@@ -393,6 +430,20 @@ json::Value GetEarnings::HandleRequestJsonThrow(
     }
 
     if (first_missing) {
+        std::vector<std::string> version_keys;
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            if (!cached[i]) {
+                version_keys.push_back(EarningsVersionKey(courier_id, first_day + static_cast<std::int64_t>(i)));
+            }
+        }
+        // Without the versions the fill could store a stale day, so a failed read skips the fill.
+        std::optional<std::vector<std::optional<std::string>>> versions;
+        try {
+            versions = redis_->Mget(std::move(version_keys), kRedisCc).Get();
+        } catch (const std::exception& e) {
+            LOG_WARNING() << "earnings cache version read failed, not filling the cache: " << e;
+        }
+
         struct WorkRow {
             std::int64_t shift_id;
             std::string zone;
@@ -436,13 +487,18 @@ json::Value GetEarnings::HandleRequestJsonThrow(
 
         TESTPOINT("earnings-before-cache-fill", {});
 
-        // ponytail: a reader that queried the DB before a concurrent write can store a stale day after that write's
-        // invalidation; it lives until TTL. Version the day key (INCR on write) if that window matters.
-        const auto ttl = snapshot[kEarningsCacheTtl];
-        std::vector<userver::storages::redis::RequestSet> writes;
-        for (std::size_t i = 0; i < keys.size(); ++i) {
+        const auto ttl = ToMillisArg(snapshot[kEarningsCacheTtl]);
+        std::vector<userver::storages::redis::RequestEval<std::int64_t>> writes;
+        std::size_t version_index = 0;
+        for (std::size_t i = 0; i < keys.size() && versions; ++i) {
             if (missing[i]) {
-                writes.push_back(redis_->Set(keys[i], SerializeDay(days[i]), ttl, kRedisCc));
+                const auto& version = (*versions)[version_index++];
+                writes.push_back(redis_->Eval<std::int64_t>(
+                    kFillDayScript,
+                    {keys[i], EarningsVersionKey(courier_id, first_day + static_cast<std::int64_t>(i))},
+                    {version.value_or(""), SerializeDay(days[i]), ttl},
+                    kRedisCc
+                ));
             }
         }
         try {
