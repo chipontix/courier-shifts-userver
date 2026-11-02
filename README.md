@@ -39,8 +39,11 @@ Code: [`src/handlers.cpp`](src/handlers.cpp) (API, SQL, cache), [`src/earnings.c
   rounded down to a cent. Rates live in the `COURIER_TARIFFS` dynamic config, so they change without a
   restart; testsuite overrides them per test.
 - **Cache**: the courier's aggregated work per UTC day of shift start, `earnings:{courier}:<day>`. A read is
-  one `MGET` over the days in the window. Missing days come from one range query and are stored with
-  `SET EX`. A write deletes only the day it touches. Money is computed per request, so a tariff change needs
+  one `MGET` over the days in the window. Missing days come from one range query. A write deletes only the
+  day it touches and bumps that day's version key in the same Lua script. A reader reads the versions of
+  its missing days before the query and stores a day only if its version has not changed, so a day read
+  before a concurrent write is never cached after it
+  ([`test_concurrent_write_does_not_leave_stale_day`](tests/test_api.py)). Money is computed per request, so a tariff change needs
   no cache flush. The cache is best effort: when Redis is down, the service reads from the database.
 - **Congestion control** is on in production config (`CPU_LIMIT=2c`, `USERVER_RPS_CCONTROL_ENABLED`),
   and `CC_ENABLED=false` turns it off for capacity runs.
@@ -75,8 +78,9 @@ the insert.
 make test PRESET=release   # or asan (Debug, ASan + UBSan, no recover) or tsan
 ```
 
-- 22 testsuite tests ([`tests/`](tests/)): API validation, overlaps, deliveries, earnings math, cache
-  invalidation and hits, per-day invalidation, per-test dynamic config, and the race above.
+- 23 testsuite tests ([`tests/`](tests/)): API validation, overlaps, deliveries, earnings math, cache
+  invalidation and hits, per-day invalidation, a write racing a cache fill (paused on a testpoint),
+  per-test dynamic config, and the race above.
 - 8 unit tests of the pay rules and tariff parsing ([`src/earnings_test.cpp`](src/earnings_test.cpp)).
 - The sanitizer presets build userver itself with the same flags (934 translation units with
   `-fsanitize=address,undefined`). Unit and testsuite tests run under each preset.
@@ -224,9 +228,9 @@ make bench LABEL=mine
   with perf.
 - Other workloads were running on the host (load average 4–6 during the reported runs). Every comparison
   ran back to back or interleaved, and repeats are published.
-- A reader that queries the database before a concurrent write can store a stale day after that write's
-  invalidation. The entry lives until the TTL (60 s by default). The fix is to version the day key, noted in
-  the code.
+- The load numbers were measured before the versioned cache fill (PR #1). It adds one `MGET` of versions
+  and replaces `SET EX` with a Lua script on the cache-miss path only; the hit path is unchanged. Not
+  re-measured yet.
 - The optional YDB backend was not built: `ydbplatform/local-ydb` ships only for amd64, and running it under
   emulation would make any measurement meaningless.
 

@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 
@@ -192,6 +193,29 @@ async def test_earnings_served_from_cache(service_client, redis_standalone_store
     fake = [{'id': 1, 'zone': 'north', 'start_us': start_us, 'duration_s': 36000, 'deliveries': 0, 'distance_m': 0}]
     redis_standalone_store.set(day_key(courier_id), json.dumps(fake))
     assert (await earnings(service_client, courier_id))['total_cents'] == 250000
+
+
+async def test_concurrent_write_does_not_leave_stale_day(service_client, testpoint):
+    courier_id = await create_courier(service_client)
+    shift_id = (await create_shift(service_client, courier_id, ts('09:00'), ts('10:00'))).json()['id']
+
+    # Pause the reader after its database query and before it fills the cache, write in between.
+    paused = asyncio.Event()
+    resume = asyncio.Event()
+
+    @testpoint('earnings-before-cache-fill')
+    async def _before_fill(data):
+        paused.set()
+        await resume.wait()
+
+    reader = asyncio.create_task(earnings(service_client, courier_id))
+    await asyncio.wait_for(paused.wait(), timeout=10)
+    assert (await assign(service_client, shift_id, 'o-1', 0, ts('09:30'))).status == 201
+    resume.set()
+    assert (await reader)['total_cents'] == 25000
+
+    # The reader must not have cached the day it read before the delivery.
+    assert (await earnings(service_client, courier_id))['total_cents'] == 34000
 
 
 async def test_earnings_window_is_exact_across_days(service_client):
