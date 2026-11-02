@@ -189,7 +189,8 @@ void HandlerBase::InvalidateEarnings(std::int64_t courier_id, TimePoint shift_st
     const auto day = DayOf(shift_start);
     // ponytail: the version lives as long as a cached day; a reader stalled between its version read and its fill
     // for longer than that could miss the bump. Readers take milliseconds.
-    const auto ttl = config_.GetSnapshot()[kEarningsCacheTtl];
+    const auto snapshot = config_.GetSnapshot();
+    const auto ttl = snapshot[kEarningsCacheTtl];
     try {
         redis_
             ->Eval<std::int64_t>(
