@@ -122,6 +122,21 @@ async def test_assignments(service_client):
     assert (await assign(service_client, shift_id, 'o-4', -1, ts('10:00'))).status == 400
 
 
+INT32_MAX = 2**31 - 1
+
+
+@pytest.mark.parametrize('distance_m', [INT32_MAX + 1, 2**32 + 2500])
+async def test_distance_outside_int32_rejected(service_client, distance_m):
+    # The column is INTEGER: a wider value must be refused, not wrapped into a plausible
+    # distance (2**32 + 2500 -> 2500) or a CHECK violation turned into a 500.
+    courier_id = await create_courier(service_client)
+    shift_id = (await create_shift(service_client, courier_id, ts('09:00'), ts('10:00'))).json()['id']
+    assert (await assign(service_client, shift_id, 'o-1', distance_m, ts('09:30'))).status == 400
+    assert (await earnings(service_client, courier_id))['total_cents'] == 25000
+
+    assert (await assign(service_client, shift_id, 'o-2', INT32_MAX, ts('09:30'))).status == 201
+
+
 async def test_earnings_default_tariffs(service_client):
     courier_id = await create_courier(service_client)
     north = (await create_shift(service_client, courier_id, ts('09:00'), ts('13:30'))).json()['id']
