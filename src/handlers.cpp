@@ -1,5 +1,6 @@
 #include <handlers.hpp>
 
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -338,8 +339,9 @@ json::Value CreateAssignment::HandleRequestJsonThrow(
     const auto order_id = RequireString(body, "order_id");
     const auto distance_m = RequireInt(body, "distance_m");
     const auto delivered_at = ParseTime(RequireString(body, "delivered_at"), "delivered_at");
-    if (distance_m < 0) {
-        ThrowBadRequest("'distance_m' must be non-negative");
+    // The column is INTEGER: a wider value would wrap in the cast below.
+    if (distance_m < 0 || distance_m > std::numeric_limits<std::int32_t>::max()) {
+        ThrowBadRequest(fmt::format("'distance_m' must be in [0, {}]", std::numeric_limits<std::int32_t>::max()));
     }
 
     struct Inserted {
