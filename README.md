@@ -78,7 +78,7 @@ the insert.
 make test PRESET=release   # or asan (Debug, ASan + UBSan, no recover) or tsan
 ```
 
-- 23 testsuite tests ([`tests/`](tests/)): API validation, overlaps, deliveries, earnings math, cache
+- 25 testsuite tests ([`tests/`](tests/)): API validation, overlaps, deliveries, earnings math, cache
   invalidation and hits, per-day invalidation, a write racing a cache fill (paused on a testpoint),
   per-test dynamic config, and the race above.
 - 8 unit tests of the pay rules and tariff parsing ([`src/earnings_test.cpp`](src/earnings_test.cpp)).
@@ -185,6 +185,9 @@ Details: [`results/day-cache/redis-and-pg.txt`](results/day-cache/redis-and-pg.t
 4. `CPU_LIMIT=2` is silently ignored by userver (it wants `2c`), which put congestion control in fake mode.
    The root cause is in userver itself, see [Upstream fix in userver](#upstream-fix-in-userver).
 5. The default `nofile=1024` in the container gave `EMFILE` and a crash under thousands of connections.
+6. A delivery `distance_m` above `INT32_MAX` was cast to the `INTEGER` column without a range check:
+   `2^32 + 2500` was stored as 2500 m with a 201, and `2^31` became a 500. It is now a 400
+   ([`test_distance_outside_int32_rejected`](tests/test_api.py), PR #2).
 
 ## Upstream fix in userver
 

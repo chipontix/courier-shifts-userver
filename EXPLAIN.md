@@ -52,7 +52,12 @@ advisory lock, потому что ретраи не сходятся; кэш п
    assertion. Монитор выключен только в testsuite-конфиге (коммит `915875a`).
 7. **TSan:** два узких suppression на отчёты внутри userver (shutdown в `~Manager` и `ClusterTopology` в
    Redis standalone). Обоснование в `tsan.suppressions.txt`.
-8. **Флеймграф:** ручка заработка занимала 19% CPU сервиса, Redis-счётчики показали hit rate 17%. Лечение:
+8. **Усечение `distance_m` до int32:** ручка доставки читала `distance_m` как int64, проверяла только
+   `< 0` и делала `static_cast<std::int32_t>` под колонку `INTEGER`. `2^32 + 2500` записывалось как
+   2500 м с ответом 201, а `2^31` становилось отрицательным, ловило CHECK в базе и превращалось в 500.
+   Нашли чтением кода 02.11. Тест `test_distance_outside_int32_rejected` запушен в PR #2 отдельным
+   коммитом и упал в CI, потом фикс: значения больше `INT32_MAX` дают 400.
+9. **Флеймграф:** ручка заработка занимала 19% CPU сервиса, Redis-счётчики показали hit rate 17%. Лечение:
    кэш по дням. Результат: −12% CPU на 12k RPS.
 
 ## 3. Откуда каждое число в README и как его повторить
@@ -64,7 +69,7 @@ advisory lock, потому что ретраи не сходятся; кэш п
 | Где в README | Источник | Чем воспроизвести |
 |---|---|---|
 | «4 overlapping shifts in one round» | `docs/race-before-constraint.txt` | `tests/test_race.py` на версии с проверкой в ручке |
-| «23 testsuite tests», «8 unit tests» | `tests/`, `src/earnings_test.cpp` | `make test PRESET=release` (ctest печатает число) |
+| «25 testsuite tests», «8 unit tests» | `tests/`, `src/earnings_test.cpp` | `make test PRESET=release` (ctest печатает число) |
 | «934 translation units» с санитайзерами | подсчёт по логу сборки preset asan, лог в репозитории не сохранён | `make build PRESET=asan` |
 | Таблица Capacity, CC off (4k…32k RPS, два прогона) | `results/ladder-repeats/baseline-*.md`, `day-cache-*.md`, `host-load.txt` | `make bench`, профиль `ladder-nocc`, дважды подряд |
 | Таблица Error share beyond capacity (32k…48k) | `results/ladder-repeats/high-*.md`, `high-*.cpu` | `loadtest/run.sh` с `RPS_FROM=32000` и CC on/off (точные параметры прогона в репозитории не записаны) |
