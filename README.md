@@ -246,7 +246,7 @@ make bench LABEL=mine
 
 ## How it was built
 
-The code, tests and documentation in this repository, and the userver fix in the fork, were written by the
+The code, tests and documentation in this repository, and both userver fixes in the fork, were written by the
 AI coding agent Claude Code (Anthropic), with Rabiya setting the task and directing the work: she chose the
 problem and the stack and set the requirements. The commits are under her account.
 
