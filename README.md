@@ -88,8 +88,12 @@ make test PRESET=release   # or asan (Debug, ASan + UBSan, no recover) or tsan
   `ADDR_NO_RANDOMIZE`. [`tsan.suppressions.txt`](tsan.suppressions.txt) is userver's own list plus two
   narrow entries for reports inside userver (shutdown path, Redis standalone topology). None of them involve
   this service's code; the details are in the file. 40 consecutive local TSan runs of the suite were clean
-  at `c92b4f8`, and every later change passed TSan as well.
+  before the day cache. The commit of that series and its log were not recorded. Every later change passed
+  TSan in CI.
 - GitHub Actions runs `release`, `asan` and `tsan` on x86_64 ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+- The regression tests of PR #1 (stale cached day) and PR #2 (`distance_m` range) were pushed alone first and
+  failed in CI on all three presets, then passed after the fix. The CI log lines and the command that
+  extracts them are in [`results/ci-regressions/`](results/ci-regressions/).
 
 ## Load test
 
@@ -158,7 +162,7 @@ miss. Redis counters confirmed it: 431,722 `HGET`, but 358,279 refills, a 17% hi
 hash per courier, and every delivery dropped all cached periods of that courier, which happened every few
 seconds.
 
-**Fix** (commit `a57a192`). Cache work per courier-day and invalidate only the affected day. A read is one
+**Fix** (commit `36ff2af`). Cache work per courier-day and invalidate only the affected day. A read is one
 `MGET`, a refill is `SET EX`, and money is computed per request.
 
 **Result**, with the same stand and load (a constant 12k RPS for 60 s, 3 runs each,
@@ -188,6 +192,9 @@ Details: [`results/day-cache/redis-and-pg.txt`](results/day-cache/redis-and-pg.t
 6. A delivery `distance_m` above `INT32_MAX` was cast to the `INTEGER` column without a range check:
    `2^32 + 2500` was stored as 2500 m with a 201, and `2^31` became a 500. It is now a 400
    ([`test_distance_outside_int32_rejected`](tests/test_api.py), PR #2).
+7. A reader that queried the database before a concurrent write could store that stale day in the cache
+   after the write had invalidated it, and the stale day lived until the TTL (60 s). The test pauses the
+   reader on a testpoint between the query and the fill. Fixed with the versioned fill (PR #1).
 
 ## Upstream fix in userver
 

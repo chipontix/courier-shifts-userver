@@ -1,0 +1,8 @@
+# PR #1, fix pushed (fcf471b, head 499aa10): does not compile, the dynamic config snapshot was not kept; fixed in 586e5bf
+# GitHub Actions run 41404807756: https://github.com/chipontix/courier-shifts-userver/actions/runs/41404807756
+# commit 499aa10b376e64f9c6773b86656db841ea064fe7, conclusion: failure
+# reproduce: gh run view 41404807756 --log | grep -E 'test_concurrent_write_does_not_leave_stale_day|=+ .*(passed|failed).* =+|tests passed|error:'
+
+asan	Build and run unit + testsuite tests	2026-11-02T07:15:56.4273206Z /cpm/userver/8b72/core/include/userver/dynamic_config/snapshot.hpp:285:19: error: static assertion failed due to requirement '!sizeof(std::chrono::duration<long, std::ratio<1, 1>>)': keep the Snapshot before using, please
+release	Build and run unit + testsuite tests	2026-11-02T07:16:09.6053197Z /cpm/userver/8b72/core/include/userver/dynamic_config/snapshot.hpp:285:19: error: static assertion failed due to requirement '!sizeof(std::chrono::duration<long, std::ratio<1, 1>>)': keep the Snapshot before using, please
+tsan	Build and run unit + testsuite tests	2026-11-02T07:15:47.8982139Z /cpm/userver/8b72/core/include/userver/dynamic_config/snapshot.hpp:285:19: error: static assertion failed due to requirement '!sizeof(std::chrono::duration<long, std::ratio<1, 1>>)': keep the Snapshot before using, please

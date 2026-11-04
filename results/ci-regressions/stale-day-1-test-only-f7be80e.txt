@@ -1,0 +1,23 @@
+# PR #1, test only: the stale-day test fails on the old cache fill
+# GitHub Actions run 41404174807: https://github.com/chipontix/courier-shifts-userver/actions/runs/41404174807
+# commit f7be80ee1a2aa74e8b9dfb0ac7d788d0b9c16f6e, conclusion: failure
+# reproduce: gh run view 41404174807 --log | grep -E 'test_concurrent_write_does_not_leave_stale_day|=+ .*(passed|failed).* =+|tests passed|error:'
+
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4670743Z ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day FAILED [ 65%]
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4678754Z ________________ test_concurrent_write_does_not_leave_stale_day ________________
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4680682Z     async def test_concurrent_write_does_not_leave_stale_day(service_client, testpoint):
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4748420Z FAILED ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day - assert 25000 == 34000
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4748847Z ================== 1 failed, 22 passed, 3 warnings in 11.42s ===================
+asan	Build and run unit + testsuite tests	2026-11-02T07:10:08.4749437Z 50% tests passed, 1 tests failed out of 2
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5423641Z ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day FAILED [ 65%]
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5432409Z ________________ test_concurrent_write_does_not_leave_stale_day ________________
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5434835Z     async def test_concurrent_write_does_not_leave_stale_day(service_client, testpoint):
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5531151Z FAILED ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day - assert 25000 == 34000
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5531851Z ================== 1 failed, 22 passed, 3 warnings in 48.62s ===================
+release	Build and run unit + testsuite tests	2026-11-02T07:10:51.5532427Z 50% tests passed, 1 tests failed out of 2
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8244120Z ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day FAILED [ 65%]
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8256564Z ________________ test_concurrent_write_does_not_leave_stale_day ________________
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8259256Z     async def test_concurrent_write_does_not_leave_stale_day(service_client, testpoint):
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8356680Z FAILED ../../tests/test_api.py::test_concurrent_write_does_not_leave_stale_day - assert 25000 == 34000
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8357843Z ================== 1 failed, 22 passed, 3 warnings in 11.85s ===================
+tsan	Build and run unit + testsuite tests	2026-11-02T07:10:54.8358485Z 50% tests passed, 1 tests failed out of 2

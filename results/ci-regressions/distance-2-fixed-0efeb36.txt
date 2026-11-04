@@ -1,0 +1,8 @@
+# PR #2 after the fix: all tests pass under release, asan, tsan
+# GitHub Actions run 41648347486: https://github.com/chipontix/courier-shifts-userver/actions/runs/41648347486
+# commit 0efeb36e3b4970e709665fcb5cbb6fe243df8ff2, conclusion: success
+# reproduce: gh run view 41648347486 --log | grep -E 'test_distance_outside_int32_rejected|=+ .*(passed|failed).* =+|tests passed|error:'
+
+asan	Build and run unit + testsuite tests	2026-11-03T13:56:33.0524039Z 100% tests passed, 0 tests failed out of 2
+release	Build and run unit + testsuite tests	2026-11-03T13:55:45.1875487Z 100% tests passed, 0 tests failed out of 2
+tsan	Build and run unit + testsuite tests	2026-11-03T13:56:47.1679897Z 100% tests passed, 0 tests failed out of 2

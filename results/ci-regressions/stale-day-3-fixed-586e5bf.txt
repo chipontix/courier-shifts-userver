@@ -1,0 +1,8 @@
+# PR #1 after the fix: all tests pass under release, asan, tsan
+# GitHub Actions run 41405391139: https://github.com/chipontix/courier-shifts-userver/actions/runs/41405391139
+# commit 586e5bff38433a9ef7160141cb3b149b263204a2, conclusion: success
+# reproduce: gh run view 41405391139 --log | grep -E 'test_concurrent_write_does_not_leave_stale_day|=+ .*(passed|failed).* =+|tests passed|error:'
+
+asan	Build and run unit + testsuite tests	2026-11-02T07:21:21.6872529Z 100% tests passed, 0 tests failed out of 2
+release	Build and run unit + testsuite tests	2026-11-02T07:21:16.5037612Z 100% tests passed, 0 tests failed out of 2
+tsan	Build and run unit + testsuite tests	2026-11-02T07:21:37.2289853Z 100% tests passed, 0 tests failed out of 2

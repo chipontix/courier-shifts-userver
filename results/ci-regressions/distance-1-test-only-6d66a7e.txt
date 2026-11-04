@@ -1,0 +1,35 @@
+# PR #2, test only: 2^31 gives 500, 2^32+2500 gives 201, both expected 400
+# GitHub Actions run 41647660014: https://github.com/chipontix/courier-shifts-userver/actions/runs/41647660014
+# commit 6d66a7eabb0918e6fba80d03d4615aa9d25b84f5, conclusion: failure
+# reproduce: gh run view 41647660014 --log | grep -E 'test_distance_outside_int32_rejected|=+ .*(passed|failed).* =+|tests passed|error:'
+
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1041996Z ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] FAILED [ 44%]
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1042286Z ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] FAILED [ 48%]
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1048563Z _______________ test_distance_outside_int32_rejected[2147483648] _______________
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1049957Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1074020Z _______________ test_distance_outside_int32_rejected[4294969796] _______________
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1075420Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1120460Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] - assert 500 == 400
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1123087Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] - assert 201 == 400
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1124254Z ================== 2 failed, 23 passed, 3 warnings in 11.71s ===================
+asan	Build and run unit + testsuite tests	2026-11-03T13:51:28.1124785Z 50% tests passed, 1 tests failed out of 2
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6347794Z ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] FAILED [ 44%]
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6348720Z ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] FAILED [ 48%]
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6364176Z _______________ test_distance_outside_int32_rejected[2147483648] _______________
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6366556Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6417164Z _______________ test_distance_outside_int32_rejected[4294969796] _______________
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6420306Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6495652Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] - assert 500 == 400
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6501226Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] - assert 201 == 400
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6503751Z ================== 2 failed, 23 passed, 3 warnings in 11.04s ===================
+release	Build and run unit + testsuite tests	2026-11-03T13:52:12.6504606Z 50% tests passed, 1 tests failed out of 2
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8460884Z ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] FAILED [ 44%]
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8461167Z ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] FAILED [ 48%]
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8468329Z _______________ test_distance_outside_int32_rejected[2147483648] _______________
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8469234Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8503042Z _______________ test_distance_outside_int32_rejected[4294969796] _______________
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8504315Z     async def test_distance_outside_int32_rejected(service_client, distance_m):
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8538013Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[2147483648] - assert 500 == 400
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8540596Z FAILED ../../tests/test_api.py::test_distance_outside_int32_rejected[4294969796] - assert 201 == 400
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8541795Z ================== 2 failed, 23 passed, 3 warnings in 10.49s ===================
+tsan	Build and run unit + testsuite tests	2026-11-03T13:51:15.8542559Z 50% tests passed, 1 tests failed out of 2
